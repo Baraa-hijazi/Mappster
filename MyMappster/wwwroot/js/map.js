@@ -142,10 +142,11 @@ function drawAreaPolygon(data) {
             text: data.areaName + " - " + data.nameArabi,
             fontWeight: "bold",
             fontSize: "14px", // Make visible
-            color: "#27278a" // Ensure label is visible
+            color: "#343434" // Ensure label is visible
         }
     });
-    marker.setVisible(false); // Hide marker by default
+
+    markers.push(marker);
 }
 
 function clearAreaPolygons() {
@@ -210,7 +211,6 @@ function drawPostalCodePolygon(data) {
 
     // Calculate center of the polygon
     const center = calculatePolygonCenter(polygon);
-
     const marker = new google.maps.Marker({
         position: center,
         map: map,
@@ -224,10 +224,11 @@ function drawPostalCodePolygon(data) {
             text: data.emPostCode,
             fontWeight: "bold",
             fontSize: "14px",
-            color: "#27278a"
+            color: "#343434"
         }
     });
-    marker.setVisible(false); // Hide marker by default
+
+    markers.push(marker);
 }
 
 function calculatePolygonCenter(polygon) {
