@@ -1,0 +1,18 @@
+﻿@page "/mapper"
+@inject IJSRuntime JsRuntime
+
+<h2>Rak Map</h2>
+
+<div id="map" style="width: 100%; height: 800px; margin-bottom: 2rem;"></div>
+
+@code {
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JsRuntime.InvokeVoidAsync("initMap");
+        }
+    }
+
+}
