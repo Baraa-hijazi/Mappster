@@ -38,12 +38,10 @@ public class AreasController : ControllerBase
             double xi = polygon[0][i][0], yi = polygon[0][i][1];
             double xj = polygon[0][j][0], yj = polygon[0][j][1];
 
-            var intersect = ((yi > pointLat) != (yj > pointLat)) &&
-                            (pointLng < (xj - xi) * (pointLat - yi) / (yj - yi) + xi);
-            if (intersect)
-            {
-                isInside = !isInside;
-            }
+            var intersect = yi > pointLat != yj > pointLat &&
+                            pointLng < (xj - xi) * (pointLat - yi) / (yj - yi) + xi;
+
+            if (intersect) isInside = !isInside;
         }
 
         return isInside;

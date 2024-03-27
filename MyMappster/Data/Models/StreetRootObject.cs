@@ -9,7 +9,7 @@ public class StreetRootObject
 
     [JsonProperty("Full_St_Name_En")]
     public string FullStNameEn { get; set; } = null!;
-    
+
     [JsonProperty("Full_St_Name_Ar")]
     public string FullStNameAr { get; set; } = null!;
 }

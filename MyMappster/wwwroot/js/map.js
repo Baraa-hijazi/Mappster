@@ -4,18 +4,16 @@ const mapOptions = {
     scrollwheel: true,
     streetViewControl: false,
     fullscreenControl: false,
-    zoom: 8,
+    zoom: 12,
     center: {lat: 25.800735, lng: 55.976242},
     styles: [
-        {
-            featureType: 'road',
-            elementType: 'labels',
-            stylers: [{visibility: 'off'}]
-        },
         {featureType: 'poi', stylers: [{visibility: 'off'}]},
-        {featureType: 'transit', stylers: [{visibility: 'off'}]}
+        {featureType: 'poi.business', stylers: [{visibility: 'off'}]},
+        {featureType: 'road', elementType: 'labels', stylers: [{visibility: 'off'}]},
+        {featureType: 'transit', elementType: 'labels.icon', stylers: [{visibility: 'off'}]},
+        {featureType: 'administrative.locality', elementType: 'labels', stylers: [{visibility: 'off'}]},
+        {featureType: 'administrative.neighborhood', elementType: 'labels', stylers: [{visibility: 'off'}]}
     ],
-
 };
 
 let map;
@@ -31,7 +29,7 @@ const svgMarker = {
 let markers = []; // Track current markers
 let polygons = []; // Track current polygons
 let polyLines = []; // Track current polygons
-let streetLines = []; // Track current street lines
+let currentInfoWindow = null; // This will hold the currently open InfoWindow
 
 async function initMap() {
     map = new google.maps.Map(document.getElementById("map"), mapOptions);
@@ -42,7 +40,7 @@ async function initMap() {
         const clickLat = mapsMouseEvent.latLng.lat();
         const clickLng = mapsMouseEvent.latLng.lng();
 
-        // Clear existing area polygons, postal code polygons, and street polylines
+        // Clear existing area polygons, postal code polygons, and street polyLines
         clearMarkers();
         clearAreaPolygons();
         clearPolyLines();
@@ -71,15 +69,66 @@ async function getMarkerData(lat, lng) {
 }
 
 function drawMarker(data) {
+    if (!data) {
+        return;
+    }
+
     data.forEach(point => {
+        // Construct content for the info window
+        const contentString = `
+            <div>
+                <h3>Location Details</h3>
+                <p><b>Community (EN):</b> ${point.communityNameEn || 'N/A'}</p>
+                <p><b>Community (AR):</b> ${point.communityNameAr || 'N/A'}</p>
+                <p><b>Area Name (EN):</b> ${point.areaNameEn || 'N/A'}</p>
+                <p><b>Area Name (AR):</b> ${point.areaNameAr || 'N/A'}</p>
+                <p><b>Region:</b> ${point.region || 'N/A'}</p>
+                <p><b>Emirate:</b> ${point.emirate || 'N/A'}</p>
+                <p><b>PostCode:</b> ${point.postCode || 'N/A'}</p>
+                <p><b>Country:</b> ${point.countryName || 'N/A'}</p>
+                <p><b>Full Road Name (EN):</b> ${point.fullRoadNameEn || 'N/A'}</p>
+                <p><b>Full Road Name (AR):</b> ${point.fullRoadNameAr || 'N/A'}</p>
+                <p><b>Road Type:</b> ${point.roadType || 'N/A'}</p>
+                <p><b>Side:</b> ${point.side || 'N/A'}</p>
+            </div>`;
+
+        // Create a marker for this point
         const marker = new google.maps.Marker({
             position: {lat: point.latitude, lng: point.longitude},
             map: map,
-            title: 'Point Location',
             icon: svgMarker
         });
 
+        // Create an info window and attach it to the marker
+        const infowindow = new google.maps.InfoWindow({
+            content: contentString
+        });
+
+        marker.addListener('click', function () {
+            // Close the current info window if it exists and is open
+            if (currentInfoWindow) {
+                currentInfoWindow.close();
+            }
+            // Open the new info window and update the reference
+            infowindow.open(map, marker);
+            currentInfoWindow = infowindow;
+        });
+
         markers.push(marker);
+
+        // Tooltip logic
+        const mapTooltip = document.getElementById('mapTooltip');
+
+        google.maps.event.addListener(marker, 'mouseover', function(event) {
+            mapTooltip.style.display = 'block';
+            mapTooltip.style.left = event.domEvent.clientX + 'px';
+            mapTooltip.style.top = event.domEvent.clientY + 'px';
+            mapTooltip.innerHTML = 'Click for more info';
+        });
+
+        google.maps.event.addListener(marker, 'mouseout', function() {
+            mapTooltip.style.display = 'none';
+        });
     });
 }
 
@@ -94,13 +143,15 @@ async function getAreaData(lat, lng) {
 }
 
 function drawAreaPolygon(data) {
+    if (!data.polygonData) {
+        return;
+    }
     const coordinates = data.polygonData.coordinates[0].map(coord => ({lat: coord[1], lng: coord[0]}));
     const polygon = new google.maps.Polygon({
         paths: coordinates,
         strokeColor: '#FFCCCC',
         clickable: false,
-        strokeOpacity: 0, // Make stroke fully transparent, as we'll use a polyline for the dashed effect
-        // strokeWeight: 2,
+        strokeOpacity: 0,
         fillColor: '#FFCCCC',
         fillOpacity: 0.35,
         map: map
@@ -165,12 +216,13 @@ function clearAreaPolygons() {
 function clearPolyLines() {
     polyLines.forEach(polyLine => polyLine.setMap(null));
     polyLines = [];
-
-    streetLines.forEach(polyLine => polyLine.setMap(null));
-    streetLines = [];
 }
 
 function drawPostalCodePolygon(data) {
+    if (!data.polygonData) {
+        return;
+    }
+
     const coordinates = data.polygonData.coordinates[0].map(coord => ({lat: coord[1], lng: coord[0]}));
     const polygon = new google.maps.Polygon({
         paths: coordinates,
@@ -263,18 +315,63 @@ async function getStreetData(lat, lng) {
 }
 
 function drawPolyline(data) {
-    const lineCoordinates = data.streetData.coordinates.map(coord => ({
-        lat: coord[1],
-        lng: coord[0]
+    if (!data.streetData) {
+        return;
+    }
+
+    const lineCoordinates = data.streetData.coordinates.map(c => ({
+        lat: c[1],
+        lng: c[0]
     }));
 
     const streetLine = new google.maps.Polyline({
         path: lineCoordinates,
         strokeColor: '#27278a',
         strokeOpacity: 0.9,
-        strokeWeight: 5
+        strokeWeight: 5,
     });
 
     streetLine.setMap(map);
-    streetLines.push(streetLine);
+    polyLines.push(streetLine);
+
+    const contentString = `
+            <div>
+            <h3>Street Name</h3>
+            <p><b>Street Name (EN):</b> ${data.Full_St_Name_En || 'N/A'}</p>
+            <p><b>Street Name (AR):</b> ${data.Full_St_Name_Ar || 'N/A'}</p>
+            </div>`;
+
+    // Create an info window and attach it to the marker
+    const infowindow = new google.maps.InfoWindow({
+        content: contentString
+    });
+
+    // Add a click listener to the polyline to show the info window
+    streetLine.addListener('click', (event) => {
+        // Use the position of the click to open the info window
+        infowindow.setPosition(event.latLng);
+
+        // Close the current info window if it exists and is open
+        if (currentInfoWindow) {
+            currentInfoWindow.close();
+        }
+
+        // Open the new info window and update the reference
+        infowindow.open(map, streetLine);
+        currentInfoWindow = infowindow;
+    });
+
+    // Tooltip logic
+    const mapTooltip = document.getElementById('mapTooltip');
+
+    google.maps.event.addListener(streetLine, 'mouseover', function(event) {
+        mapTooltip.style.display = 'block';
+        mapTooltip.style.left = event.domEvent.clientX + 'px';
+        mapTooltip.style.top = event.domEvent.clientY + 'px';
+        mapTooltip.innerHTML = 'Click for more info';
+    });
+
+    google.maps.event.addListener(streetLine, 'mouseout', function() {
+        mapTooltip.style.display = 'none';
+    });
 }
