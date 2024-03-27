@@ -1,4 +1,9 @@
 const mapOptions = {
+    mapTypeId: 'roadmap',
+    mapTypeControl: false,
+    scrollwheel: true,
+    streetViewControl: false,
+    fullscreenControl: false,
     zoom: 8,
     center: {lat: 25.800735, lng: 55.976242},
     styles: [
@@ -6,8 +11,11 @@ const mapOptions = {
             featureType: 'road',
             elementType: 'labels',
             stylers: [{visibility: 'off'}]
-        }
-    ]
+        },
+        {featureType: 'poi', stylers: [{visibility: 'off'}]},
+        {featureType: 'transit', stylers: [{visibility: 'off'}]}
+    ],
+
 };
 
 let map;
