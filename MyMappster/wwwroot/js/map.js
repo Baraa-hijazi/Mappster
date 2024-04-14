@@ -28,7 +28,7 @@ const svgMarker = {
 
 let markers = []; // Track current markers
 let polygons = []; // Track current polygons
-let polyLines = []; // Track current polygons
+let polyLines = []; // Track current polyLines
 let currentInfoWindow = null; // This will hold the currently open InfoWindow
 
 async function initMap() {
